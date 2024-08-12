@@ -269,183 +269,153 @@ height:55px;
 </body>
 </html>
 <script>
+// References to DOM Elements 
 
+const prevBtn = document.querySelector("#prev-btn");
+const nextBtn = document.querySelector("#next-btn");
+const book = document.querySelector("#book");
+const papers = [
+    document.querySelector("#p1"), 
+    document.querySelector("#p2"), 
+    document.querySelector("#p3"), 
+    document.querySelector("#p4"), 
+    document.querySelector("#p5")
+];
+const pannableContent = document.getElementById('pannable-content');
+const zoomSlider = document.getElementById('zoom-slider');
 
-    // References to DOM Elements 
+// Variables for panning and zooming 
 
-    const prevBtn = document.querySelector("#prev-btn");
+let zoomFactor = 1;
+let panX = 0;
+let panY = 0;
+let isDragging = false;
+let startX = 0;
+let startY = 0;
 
-    const nextBtn = document.querySelector("#next-btn");
+let initialDistance = null;
+let lastZoomFactor = zoomFactor;
 
-    const book = document.querySelector("#book");
+// Variables for book navigation 
 
-    const papers = [document.querySelector("#p1"), document.querySelector("#p2"), document.querySelector("#p3"), document.querySelector("#p4"), document.querySelector("#p5")];
+let currentLocation = 1;
+const numOfPapers = papers.length;
+const maxLocation = numOfPapers + 1;
 
-    const pannableContent = document.getElementById('pannable-content');
+// Event Listener for zoom control 
 
-    const zoomSlider = document.getElementById('zoom-slider');
-
-
-
-    // Variables for panning and zooming 
-
-    let zoomFactor = 1;
-
-    let panX = 0;
-
-    let panY = 0;
-
-    let isDragging = false;
-
-    let startX = 0;
-
-    let startY = 0;
-
-
-
-    // Variables for book navigation 
-
-    let currentLocation = 1;
-
-    const numOfPapers = papers.length;
-
-    const maxLocation = numOfPapers + 1;
-
-
-
-    // Event Listener for zoom control 
-
-    zoomSlider.addEventListener('input', () => {
-
-        zoomFactor = zoomSlider.value / 100;
-
-        updateZoomPan();
-
-    });
-
-
-
-    // Function to apply zoom and pan 
-
-    function updateZoomPan() {
-
-        pannableContent.style.transform = `scale(${zoomFactor}) translate(${panX}px, ${panY}px)`;
-
-        if (isDragging) {
-
-            requestAnimationFrame(updateZoomPan);
-
-        }
-
-    }
-
-// Select all image elements
-const images = document.querySelectorAll('img[data-src]'); // Ensure your images have "data-src" attribute instead of "src"
-
-function preloadImage(img) {
-    const src = img.getAttribute("data-src");
-    if (!src) return;
-    img.src = src;
-}
-
-const imgObserver = new IntersectionObserver((entries, imgObserver) => {
-    entries.forEach(entry => {
-        if (!entry.isIntersecting) return;
-        preloadImage(entry.target);
-        imgObserver.unobserve(entry.target);
-    });
-}, { threshold: 0.5 });
-
-images.forEach(img => {
-    imgObserver.observe(img);
+zoomSlider.addEventListener('input', () => {
+    zoomFactor = zoomSlider.value / 100;
+    lastZoomFactor = zoomFactor; // Update last known zoom factor
+    updateZoomPan();
 });
 
-    // Initial update for zoom and pan 
+// Function to apply zoom and pan 
 
+function updateZoomPan() {
+    pannableContent.style.transform = `scale(${zoomFactor}) translate(${panX}px, ${panY}px)`;
+    if (isDragging) {
+        requestAnimationFrame(updateZoomPan);
+    }
+}
+
+// Initial update for zoom and pan 
+
+updateZoomPan();
+
+// Mouse and Touch events for dynamic panning
+function startInteraction(startXCoord, startYCoord) {
+    isDragging = true;
+    startX = startXCoord - panX;
+    startY = startYCoord - panY;
     updateZoomPan();
+}
 
+function moveInteraction(xCoord, yCoord) {
+    if (!isDragging) return;
+    panX = xCoord - startX;
+    panY = yCoord - startY;
+    updateZoomPan();
+}
 
+function endInteraction() {
+    isDragging = false;
+}
 
-    // Mouse and Touch events for dynamic panning
-    function startInteraction(startXCoord, startYCoord) {
-        isDragging = true;
-        startX = startXCoord - panX;
-        startY = startYCoord - panY;
-        updateZoomPan();
-    }
+// Adding pinch-to-zoom handling
+pannableContent.addEventListener('touchstart', (e) => {
+    e.preventDefault();
 
-    function moveInteraction(xCoord, yCoord) {
-        if (!isDragging) return;
-        panX = xCoord - startX;
-        panY = yCoord - startY;
-        updateZoomPan();
-    }
-
-    function endInteraction() {
-        isDragging = false;
-    }
-
-    pannableContent.addEventListener('mousedown', (e) => {
-        e.preventDefault(); // Prevent default action
-        startInteraction(e.clientX, e.clientY);
-        pannableContent.style.cursor = 'grabbing';
-    });
-
-    pannableContent.addEventListener('touchstart', (e) => {
-        e.preventDefault();
+    if (e.touches.length === 2) {
+        // Pinch-to-zoom start
+        initialDistance = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+        );
+    } else if (e.touches.length === 1) {
+        // Panning start
         const touch = e.touches[0];
         startInteraction(touch.clientX, touch.clientY);
-    });
+    }
+});
 
-    document.addEventListener('mousemove', (e) => moveInteraction(e.clientX, e.clientY));
-    document.addEventListener('touchmove', (e) => {
+pannableContent.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+
+    if (e.touches.length === 2 && initialDistance) {
+        // Pinch-to-zoom move
+        const currentDistance = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+        );
+        zoomFactor = lastZoomFactor * (currentDistance / initialDistance);
+        zoomFactor = Math.max(0.5, Math.min(zoomFactor, 3)); // Limit zoom out to 0.5x and zoom in to 3x
+        updateZoomPan();
+    } else if (e.touches.length === 1 && !initialDistance) {
+        // Panning move
         const touch = e.touches[0];
         moveInteraction(touch.clientX, touch.clientY);
-        e.preventDefault();
-    });
-
-    document.addEventListener('mouseup', endInteraction);
-    document.addEventListener('touchend', endInteraction);
-
-
-
-
-
-    // Event Listeners for navigation buttons 
-
-    prevBtn.addEventListener("click", goPrevPage);
-
-    nextBtn.addEventListener("click", goNextPage);
-
-
-
-    // Functions for page flipping 
-
-    function openBook() {
-
-        book.style.transform = "translateX(50%)";
-
-        prevBtn.style.transform = "translateX(0px)";
-
-        nextBtn.style.transform = "translateX(0px)";
-
     }
+});
 
-
-
-    function closeBook(isAtBeginning) {
-
-        book.style.transform = isAtBeginning ? "translateX(0%)" : "translateX(0%)";
-
-        prevBtn.style.transform = "translateX(0px)";
-
-        nextBtn.style.transform = "translateX(0px)";
-
+pannableContent.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) {
+        // Reset pinch-zoom state if fingers are removed
+        initialDistance = null;
+        lastZoomFactor = zoomFactor;
     }
+    endInteraction();
+});
 
+pannableContent.addEventListener('mousedown', (e) => {
+    e.preventDefault(); // Prevent default action
+    startInteraction(e.clientX, e.clientY);
+    pannableContent.style.cursor = 'grabbing';
+});
 
+document.addEventListener('mousemove', (e) => moveInteraction(e.clientX, e.clientY));
+document.addEventListener('mouseup', endInteraction);
 
-    function goNextPage() {
+// Event Listeners for navigation buttons 
+
+prevBtn.addEventListener("click", goPrevPage);
+nextBtn.addEventListener("click", goNextPage);
+
+// Functions for page flipping 
+
+function openBook() {
+    book.style.transform = "translateX(50%)";
+    prevBtn.style.transform = "translateX(0px)";
+    nextBtn.style.transform = "translateX(0px)";
+}
+
+function closeBook(isAtBeginning) {
+    book.style.transform = isAtBeginning ? "translateX(0%)" : "translateX(0%)";
+    prevBtn.style.transform = "translateX(0px)";
+    nextBtn.style.transform = "translateX(0px)";
+}
+
+function goNextPage() {
     if (currentLocation < maxLocation) {
         // Open book for first page
         if (currentLocation === 1) {
@@ -485,6 +455,26 @@ function goPrevPage() {
     }
 }
 
+// Select all image elements for lazy loading
+const images = document.querySelectorAll('img[data-src]'); // Ensure your images have "data-src" attribute instead of "src"
+
+function preloadImage(img) {
+    const src = img.getAttribute("data-src");
+    if (!src) return;
+    img.src = src;
+}
+
+const imgObserver = new IntersectionObserver((entries, imgObserver) => {
+    entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        preloadImage(entry.target);
+        imgObserver.unobserve(entry.target);
+    });
+}, { threshold: 0.5 });
+
+images.forEach(img => {
+    imgObserver.observe(img);
+});
 
 
 </script>
