@@ -408,7 +408,29 @@ images.forEach(img => {
     document.addEventListener('touchend', endInteraction);
 
 
+// Add panning functionality for touch events
+let isTouchPanning = false;
+let touchStartX = 0;
+let touchStartY = 0;
 
+flipbook.addEventListener('touchstart', (e) => {
+    // Check if the target is the zoom slider to prevent panning
+    if (e.target.closest('input[type="range"]')) return;
+
+    isTouchPanning = true;
+    const touch = e.touches[0];
+    touchStartX = touch.clientX - offsetX;
+    touchStartY = touch.clientY - offsetY;
+});
+
+flipbook.addEventListener('touchmove', (e) => {
+    if (isTouchPanning) {
+        const touch = e.touches[0];
+        offsetX = touch.clientX - touchStartX;
+        offsetY = touch.clientY - touchStartY;
+        updateZoomPan();
+    }
+});
 
 
     // Event Listeners for navigation buttons 
