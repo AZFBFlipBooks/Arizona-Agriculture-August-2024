@@ -362,7 +362,7 @@ pannableContent.addEventListener('touchmove', (e) => {
             e.touches[0].clientY - e.touches[1].clientY
         );
         zoomFactor = lastZoomFactor * (currentDistance / initialDistance);
-        zoomFactor = Math.max(0.5, Math.min(zoomFactor, 3)); // Limit zoom out to 0.5x and zoom in to 3x
+        zoomFactor = Math.max(0.5, Math.min(zoomFactor, 10)); // Increase the maximum zoom to 10x
         updateZoomPan();
     } else if (e.touches.length === 1 && !initialDistance) {
         // Panning move
